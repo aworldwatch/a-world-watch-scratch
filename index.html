@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A World Watch Scratch Card</title>
+<style>
+body{margin:0;background:#f7f7f7;font-family:Arial,sans-serif;color:#222;text-align:center}
+.wrap{max-width:430px;margin:auto;padding:24px 16px}
+h1{margin:8px 0;color:#b40000;font-size:28px}.sub{margin:0 0 18px}
+.card{position:relative;height:230px;border-radius:18px;background:#fff;border:2px solid #ddd;box-shadow:0 5px 18px #0002;overflow:hidden}
+#cover{position:absolute;inset:0;width:100%;height:100%;z-index:2;touch-action:none}
+#result{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;z-index:1}
+#result.hidden{visibility:hidden}.big{font-size:48px;font-weight:800;color:#b40000}
+.code{font-size:22px;font-weight:700;margin-top:10px}.msg{margin-top:18px;font-weight:600}
+.small{font-size:13px;color:#666;margin-top:14px}.location-btn{display:inline-block;margin-top:16px;padding:12px 20px;border-radius:10px;background:#b40000;color:#fff;text-decoration:none;font-weight:700;font-size:15px;box-shadow:0 3px 10px #0002}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>A WORLD WATCH</h1>
+<p class="sub">Scratch Karo & Discount Pao!</p>
+<div id="card" class="card">
+<canvas id="cover"></canvas>
+<div id="result" class="hidden"><div class="big" id="discount"></div><div class="code" id="code"></div></div>
+</div>
+<div class="msg" id="msg">Scratch the card to reveal your discount.</div>
+<div class="small">Watches • Sales • Repairing<br>Gandhi Nagar Mode, Tonk Road, Jaipur</div>
+<a class="location-btn" href="https://www.google.com/maps/search/?api=1&query=A%20World%20Watch%2C%20Gandhi%20Nagar%20Mode%2C%20Tonk%20Road%2C%20Jaipur" target="_blank" rel="noopener">
+📍 STORE LOCATION
+</a>
+</div>
+<script>
+const cover=document.getElementById("cover"),ctx=cover.getContext("2d"),result=document.getElementById("result");
+const discountEl=document.getElementById("discount"),codeEl=document.getElementById("code"),msg=document.getElementById("msg");
+let scratching=false,revealed=false,last=0,claimToken=localStorage.getItem("aww_claim_token");
+if(!claimToken){claimToken=crypto.randomUUID();localStorage.setItem("aww_claim_token",claimToken);}
+function resize(){const r=cover.getBoundingClientRect();cover.width=Math.round(r.width*devicePixelRatio);cover.height=Math.round(r.height*devicePixelRatio);ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);ctx.globalCompositeOperation="source-over";ctx.fillStyle="#bdbdbd";ctx.fillRect(0,0,r.width,r.height);ctx.fillStyle="#666";ctx.font="bold 25px Arial";ctx.textAlign="center";ctx.fillText("SCRATCH HERE",r.width/2,r.height/2+8);ctx.globalCompositeOperation="destination-out";}
+async function reveal(){if(revealed)return;revealed=true;msg.textContent="Checking your scratch…";try{const r=await fetch("/.netlify/functions/claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({claimToken})});const x=await r.json();if(!r.ok)throw new Error(x.message||"Claim failed");cover.style.display="none";result.classList.remove("hidden");discountEl.textContent=x.discount+"% OFF";codeEl.textContent=x.code;msg.textContent="Your scratch chance has been used.";}catch(e){revealed=false;msg.textContent="Please try scratching again.";}}
+function check(){if(!last||performance.now()-last>250){last=performance.now();const d=ctx.getImageData(0,0,cover.width,cover.height).data;let clear=0,total=d.length/4;for(let i=3;i<d.length;i+=4)if(d[i]<20)clear++;if(clear/total>.38)reveal();}}
+function scratch(e){if(revealed)return;const r=cover.getBoundingClientRect(),p=e.touches?e.touches[0]:e,x=p.clientX-r.left,y=p.clientY-r.top;ctx.beginPath();ctx.arc(x,y,28,0,Math.PI*2);ctx.fill();check();}
+cover.addEventListener("touchstart",e=>{e.preventDefault();scratching=true;scratch(e)},{passive:false});
+cover.addEventListener("touchmove",e=>{e.preventDefault();if(scratching)scratch(e)},{passive:false});
+cover.addEventListener("touchend",()=>scratching=false);cover.addEventListener("mousedown",e=>{scratching=true;scratch(e)});
+window.addEventListener("mousemove",e=>{if(scratching)scratch(e)});window.addEventListener("mouseup",()=>scratching=false);
+window.addEventListener("resize",()=>{if(!revealed)resize()});resize();
+</script>
+</body></html>
